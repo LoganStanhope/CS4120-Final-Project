@@ -10,7 +10,7 @@ class GenericPreprocessor(object):
 
 class SimplePreprocessor(GenericPreprocessor):
     def __init__(self, data):
-        GenericPreprocessor.__init__()
+        GenericPreprocessor.__init__(self)
         self.data = data
 
     def process_data(self):
@@ -22,7 +22,7 @@ class SimplePreprocessor(GenericPreprocessor):
 
 class BOWPreprocessor(GenericPreprocessor):
     def __init__(self, data):
-        GenericPreprocessor.__init__()
+        GenericPreprocessor.__init__(self)
         self.data = data
 
     def process_data(self):
@@ -33,7 +33,7 @@ class BOWPreprocessor(GenericPreprocessor):
 
 class TFIDFPreprocessor(GenericPreprocessor):
     def __init__(self, data):
-        GenericPreprocessor.__init__()
+        GenericPreprocessor.__init__(self)
         self.data = data
 
     def process_data(self):
@@ -43,7 +43,7 @@ class TFIDFPreprocessor(GenericPreprocessor):
 
 class NGramPreprocessor(GenericPreprocessor):
     def __init__(self, data, n):
-        GenericPreprocessor.__init__()
+        GenericPreprocessor.__init__(self)
         self.data = data
         self.n = n
 

@@ -15,7 +15,7 @@ class GenericClfModel(object):
 class NaiveBayesClf(GenericClfModel):
 
     def __init__(self):
-        GenericClfModel.__init__()
+        GenericClfModel.__init__(self)
 
     def train(self):
         # training loop for naive bayes clf 
@@ -29,7 +29,7 @@ class NaiveBayesClf(GenericClfModel):
 class LogRegClf(GenericClfModel):
 
     def __init__(self):
-        GenericClfModel.__init__()
+        GenericClfModel.__init__(self)
         # example...
         self.model = LogisticRegression()
 
@@ -44,7 +44,7 @@ class LogRegClf(GenericClfModel):
 
 class NeuralNetworkClf(GenericClfModel):
     def __init__(self):
-        GenericClfModel.__init__()
+        GenericClfModel.__init__(self)
 
     def train(self):
         # training for NN
@@ -57,7 +57,7 @@ class NeuralNetworkClf(GenericClfModel):
 
 class MLPClf(GenericClfModel):
     def __init__(self):
-        GenericClfModel.__init__()
+        GenericClfModel.__init__(self)
 
     def train(self):
         # training for MLP
