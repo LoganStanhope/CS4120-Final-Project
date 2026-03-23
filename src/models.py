@@ -1,4 +1,5 @@
 from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
 import torch
 
 
@@ -16,14 +17,15 @@ class NaiveBayesClf(GenericClfModel):
 
     def __init__(self):
         GenericClfModel.__init__(self)
+        self.model = MultinomialNB()
 
-    def train(self):
+    def train(self, X_train, y_train):
         # training loop for naive bayes clf 
-        pass
+        self.model.fit(X_train, y_train)
 
-    def predict(self):
+    def predict(self, X_test):
         # predictions for naive bayes
-        pass 
+        return self.model.predict(X_test)
 
 
 class LogRegClf(GenericClfModel):
