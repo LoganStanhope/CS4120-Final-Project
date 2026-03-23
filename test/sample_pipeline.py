@@ -87,3 +87,4 @@ mlp_preds = mlp_clf.predict(X_test_bow)
 mlp_accuracy = accuracy_score(y_test, mlp_preds)
 # 0.99606533
 print(f"BOW + MLP accuracy: {mlp_accuracy:.8f}")
+print(accuracy)
