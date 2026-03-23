@@ -1,6 +1,7 @@
 import nltk
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.compose import ColumnTransformer
 
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
@@ -38,16 +39,21 @@ class BOWPreprocessor(GenericPreprocessor):
 
 
 class TFIDFPreprocessor(GenericPreprocessor):
-    def __init__(self, data: list[str]):
+    def __init__(self, data, columns):
         GenericPreprocessor.__init__(self)
         self.data = data
-        self.vectorizer = TfidfVectorizer(stop_words='english')
-
+        self.columns = columns
 
     def process_data(self):
         # implement TFIDF preprocessor
         # return processed data
-        return self.vectorizer.fit_transform(self.data)
+        transformer = ColumnTransformer(
+            transformers = [
+                (f"{col}_tfidf", TfidfVectorizer(stop_words='english'), col)
+                for col in self.columns
+            ], 
+            remainder='passthrough')
+        return transformer.fit_transform(self.data)
 
 class NGramPreprocessor(GenericPreprocessor):
     def __init__(self, data, n):
