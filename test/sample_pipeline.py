@@ -122,3 +122,24 @@ nn_accuracy = accuracy_score(y_test, nn_preds)
 print(f"\nN-Gram + RNN accuracy: {nn_accuracy:.8f}")
 # to see precision, f1, recall, etc.
 print(classification_report(y_test, nn_preds, target_names=["real", "fake"]))
+
+# ============================================================
+# Simple + Logistic Regression
+# ============================================================
+#preprocess text
+simple_pre = SimplePreprocessor(data=X_train_text)
+X_train_simple = simple_pre.process_data()
+X_test_simple = SimplePreprocessor(data=X_test_text).process_data()
+#converting to numeric features 
+#use TF-IDF as a vectorizer only
+vectorizer = TfidfVectorizer()
+X_train_vec = vectorizer.fit_transform(X_train_simple)
+X_test_vec = vectorizer.transform(X_test_simple)
+#train model
+logreg_clf = LogRegClf()
+logreg_clf.train(X_train_vec, y_train)
+#predicting + evaluate
+logreg_preds = logreg_clf.predict(X_test_vec)
+logreg_accuracy = accuracy_score(y_test, logreg_preds)
+#accuracy = 0.99231626
+print(f"\nsimple + logistic regression accuracy: {logreg_accuracy:.8f}")
