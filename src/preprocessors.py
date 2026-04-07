@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.compose import ColumnTransformer
+import re
+import numpy as np
 
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
@@ -23,10 +25,26 @@ class SimplePreprocessor(GenericPreprocessor):
         self.data = data
 
     def process_data(self):
-        # implement simple preprocessor
-        # return processed data 
+        processed = []
 
-        pass 
+        for text in self.data:
+            text = str(text).lower()
+
+            #removing punctuation
+            text = re.sub(r'[^\w\s]', '', text)
+
+            #tokenize 
+            tokens = text.split()
+
+            #remove short words
+            tokens = [word for word in tokens if len(word) > 2]
+
+            #keep only alphabetic words
+            tokens = [word for word in tokens if word.isalpha()]
+
+            processed.append(" ".join(tokens))
+
+        return np.array(processed)
 
 
 class BOWPreprocessor(GenericPreprocessor):
