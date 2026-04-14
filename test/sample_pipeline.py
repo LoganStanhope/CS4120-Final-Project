@@ -1,46 +1,44 @@
 import sys, os
-# Navigate one level up from test/ to the project root (CS4120-Final-Project/)
-# and insert it at the front of Python's module search path.
-# This ensures `from src.models import *` resolves correctly regardless of
-# where the script is invoked from.
+# Navigate one level up from test/ to the project root
+# so `from src.models import *` resolves correctly.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.models import *
-from src.preprocessors import * 
+from src.preprocessors import *
+from src.data_loader import load_all_data
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 
 # ============================================================
 # Load & prepare data
 # ============================================================
-true_df = pd.read_csv("data/True.csv")
-true_df['label'] = 0 # 0 is true
-fake_df = pd.read_csv("data/Fake.csv")
-fake_df['label'] = 1 # 1 is fake
+full_df = load_all_data(
+    kaggle_true="data/True.csv",          # set to None to skip Kaggle
+    kaggle_fake="data/Fake.csv",          # set to None to skip Kaggle
+    liar_dir="data/liar_dataset",         # set to None to skip LIAR
+    include_ambiguous=False,              # drop half-true / barely-true
+)
 
-## 1 = fake, 0 = true
-
-## combine dfs together and shuffle
-full_df = pd.concat([true_df, fake_df])
+## 1 = fake, 0 = real
 print(full_df['label'].value_counts())
+
 ##############
+# Combined dataset no ambiguous
+# 1    27035
+# 0    25924
+# Kaggle dataset
 # 1    23481
 # 0    21417
+# Liar dataset no ambiguous
+# 1    4507
+# 0    3554
 ############## - balanced dataset
 
 print(full_df.shape)
 print(full_df.columns)
 
-
-# keep relevant features 
-full_df.drop(columns=['date'], inplace=True)
-
-# isolate data from label
+# ── Isolate text and labels ──
 y = full_df['label']
-X = full_df.drop(columns=['label'])
-
-# Concatenate all text columns into a single string per article.
-# Both NGramPreprocessor and the RNN vocab builder work on a Series[str].
-X_text = X.apply(lambda row: " ".join(row.astype(str)), axis=1)
+X_text = full_df['text']
 
 X_train_text, X_test_text, y_train, y_test = train_test_split(
     X_text, y, test_size=0.2, random_state=42
@@ -49,7 +47,8 @@ X_train_text, X_test_text, y_train, y_test = train_test_split(
 # ============================================================
 # TF-IDF + NB
 # ============================================================
-preprocessor = TFIDFPreprocessor(data=X, columns=X.columns)
+X_tfidf_df = full_df[['text']]
+preprocessor = TFIDFPreprocessor(data=X_tfidf_df, columns=['text'])
 X_processed = preprocessor.process_data()
 X_train_tfidf, X_test_tfidf, y_train_nb, y_test_nb = train_test_split(
     X_processed, y, test_size=0.3, random_state=42
@@ -58,14 +57,11 @@ clf = NaiveBayesClf()
 clf.train(X_train_tfidf, y_train_nb)
 preds = clf.predict(X_test_tfidf)
 nb_accuracy = accuracy_score(y_test_nb, preds)
-# 0.9994060876020787
 print(f"TF-IDF + NaiveBayes accuracy: {nb_accuracy:.8f}")
 
 # ============================================================
 # BOW + MLP
 # ============================================================
-
-# BOW only handles a single text column, so concatenate all text columns into one
 bow_preprocessor = BOWPreprocessor(data=X_train_text)
 X_train_bow = bow_preprocessor.process_data()
 X_test_bow = bow_preprocessor.transform(X_test_text)
@@ -86,11 +82,10 @@ mlp_clf = MLPClf(
 mlp_clf.train(X_train_bow, y_train.to_numpy())
 mlp_preds = mlp_clf.predict(X_test_bow)
 mlp_accuracy = accuracy_score(y_test, mlp_preds)
-# 0.99606533
 print(f"BOW + MLP accuracy: {mlp_accuracy:.8f}")
 
 # ============================================================
-# N-Gram(?) + RNN
+# N-Gram + RNN
 # ============================================================
 
 # RNN pretty much just ignores the NN preprocessor since it just uses it to
@@ -99,29 +94,27 @@ ngram_pre = NGramPreprocessor(data=X_train_text, n=1, max_features=10_000)
 ngram_pre.process_data()
 vocab = ngram_pre.get_vocab()
 
-MAX_SEQ_LEN = 128  # keep this small so we can actually run the code X_X
+MAX_SEQ_LEN = 128  # keep this small so we can actually run the code
 X_train_seq = ngram_pre.to_sequences(X_train_text.tolist(), max_seq_len=MAX_SEQ_LEN)
 X_test_seq  = ngram_pre.to_sequences(X_test_text.tolist(),  max_seq_len=MAX_SEQ_LEN)
 
 nn_clf = NeuralNetworkClf(
     vocab_size=len(vocab),
-    embed_dim=64,       # small
-    hidden_dim=64,      # small
+    embed_dim=64,
+    hidden_dim=64,
     output_dim=2,
-    num_layers=1,       # single layer — much faster than 2
+    num_layers=1,
     dropout=0.3,
     lr=1e-3,
     epochs=5,
-    batch_size=128,     # larger batch = fewer steps per epoch
+    batch_size=128,
     max_seq_len=MAX_SEQ_LEN,
 )
 nn_clf.train(X_train_seq, y_train.to_numpy())
 nn_preds = nn_clf.predict(X_test_seq)
 nn_accuracy = accuracy_score(y_test, nn_preds)
-# accuracy = 0.9972
 print(f"\nN-Gram + RNN accuracy: {nn_accuracy:.8f}")
-# to see precision, f1, recall, etc.
-print(classification_report(y_test, nn_preds, target_names=["real", "fake"]))
+print(classification_report(y_test, nn_preds, target_names=["real", "fake"])) # to see precision, f1, recall, etc.
 
 # ============================================================
 # Simple + Logistic Regression
@@ -141,5 +134,4 @@ logreg_clf.train(X_train_vec, y_train)
 #predicting + evaluate
 logreg_preds = logreg_clf.predict(X_test_vec)
 logreg_accuracy = accuracy_score(y_test, logreg_preds)
-#accuracy = 0.99231626
-print(f"\nsimple + logistic regression accuracy: {logreg_accuracy:.8f}")
+print(f"\nSimple + Logistic Regression accuracy: {logreg_accuracy:.8f}")
