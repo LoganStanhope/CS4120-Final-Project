@@ -3,13 +3,29 @@ from src.preprocessors import *
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 from src.data_loader import load_all_data
+import scipy.sparse as sp
+
+# Preprocessors that output sparse matrices vs. integer sequences (for RNN)
+SPARSE_PREPROCESSORS = {'simple', 'bow', 'tfidf', 'ngram'}
+
+# Models that need dense float arrays (MLP uses torch tensors, built from dense)
+DENSE_MODELS = {'mlp'}
+
+# The RNN expects integer index sequences, not BOW/TF-IDF vectors.
+# Only 'ngram' supports to_sequences(); skip all other pp+rnn combos.
+RNN_COMPATIBLE_PREPROCESSORS = {'ngram'}
+
 
 def run_pipeline(X, y, preprocessor_cls, pp_kwargs, pp_name, model_cls, model_kwargs, model_name):
     """
     Runs a full training and testing pipeline for a given preprocessor/model combination.
     Splits raw text first, then fits the preprocessor on train only to avoid data leakage.
-    Both the preprocessor and model are instantiated fresh each run.
     """
+    # Skip incompatible RNN combinations early
+    if model_name == 'rnn' and pp_name not in RNN_COMPATIBLE_PREPROCESSORS:
+        print(f"  [SKIPPED] {pp_name} produces BOW vectors, not sequences — incompatible with RNN.")
+        return
+
     # 1. Split raw text first
     X_train_raw, X_test_raw, y_train, y_test = train_test_split(
         X, y, test_size=0.3, random_state=42
@@ -19,8 +35,25 @@ def run_pipeline(X, y, preprocessor_cls, pp_kwargs, pp_name, model_cls, model_kw
 
     # 2. Fresh preprocessor fitted only on train data
     preprocessor = preprocessor_cls(data=X_train_raw, **pp_kwargs)
-    X_train = preprocessor.process_data()        # fit_transform on train
-    X_test  = preprocessor.transform(X_test_raw) # transform-only on test
+
+    if model_name == 'rnn':
+        # RNN needs integer index sequences, not sparse TF-IDF vectors
+        preprocessor.process_data()  # fit the vectorizer (result discarded)
+        X_train = preprocessor.to_sequences(X_train_raw, max_seq_len=model_kwargs.get('max_seq_len', 128))
+        X_test  = preprocessor.to_sequences(X_test_raw,  max_seq_len=model_kwargs.get('max_seq_len', 128))
+    else:
+        X_train = preprocessor.process_data()   # sparse matrix
+        X_test  = preprocessor.transform(X_test_raw)  # sparse matrix
+
+        # MLP needs a dense float32 array (fed into torch tensors)
+        if model_name == 'mlp':
+            X_train = X_train.toarray().astype(np.float32) if sp.issparse(X_train) else X_train
+            X_test  = X_test.toarray().astype(np.float32)  if sp.issparse(X_test)  else X_test
+
+        # NaiveBayes requires non-negative values — TF-IDF is fine, but guard anyway
+        if model_name == 'naive_bayes' and sp.issparse(X_train):
+            # Keep sparse; MultinomialNB accepts sparse input natively
+            pass
 
     vocab_size = preprocessor.get_vocab_size()
 
@@ -40,14 +73,6 @@ def run_pipeline(X, y, preprocessor_cls, pp_kwargs, pp_name, model_cls, model_kw
 
 
 def main():
-    # Load and label data
-    # true_df = pd.read_csv("data/True.csv")
-    # true_df['label'] = 0  # 0 = true
-    # fake_df = pd.read_csv("data/Fake.csv")
-    # fake_df['label'] = 1  # 1 = fake
-
-    # full_df = pd.concat([true_df, fake_df])
-    # full_df.drop(columns=['date'], inplace=True)
     full_df = load_all_data()
 
     print(full_df.shape)
@@ -59,7 +84,6 @@ def main():
     # Series[str] for preprocessors that work on a single text column
     X_text = X.apply(lambda row: " ".join(row.astype(str)), axis=1)
 
-    # (class, kwargs) — no data attached, no instances created yet
     preprocessor_config = {
         'simple': (SimplePreprocessor, {}),
         'bow':    (BOWPreprocessor,    {'max_features': 20_000}),
@@ -71,7 +95,6 @@ def main():
         'logreg':      (LogRegClf,        {}),
         'naive_bayes': (NaiveBayesClf,    {}),
         'mlp':         (MLPClf,           {
-            # input_dim injected at runtime from vocab_size
             'output_dim':  2,
             'hidden_dims': [256, 128],
             'dropout':     0.3,
@@ -80,7 +103,6 @@ def main():
             'batch_size':  32,
         }),
         'rnn':         (NeuralNetworkClf, {
-            # vocab_size injected at runtime from preprocessor
             'embed_dim':   64,
             'hidden_dim':  64,
             'output_dim':  2,
