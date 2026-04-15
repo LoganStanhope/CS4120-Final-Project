@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torch.utils.data import DataLoader, TensorDataset
+from tqdm import tqdm
 
 class GenericClfModel(object):
 
@@ -108,7 +109,7 @@ class NeuralNetworkClf(GenericClfModel):
         )
 
         self.model.train()
-        for epoch in range(self.epochs):
+        for epoch in tqdm(range(self.epochs)):
             total_loss = 0.0
             for X_batch, y_batch in loader:
                 X_batch = X_batch.to(self.device)

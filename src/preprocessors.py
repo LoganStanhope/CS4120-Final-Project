@@ -16,18 +16,31 @@ class GenericPreprocessor(object):
   
     def process_data(self):
         raise Exception("implement me in my subclasses!")
+    
+    def transform(self, data):
+        raise Exception("implement me in my subclasses!")
+
+    def get_vocab_size(self):
+        raise Exception("implement me in my subclasses!")
 
         
 
 class SimplePreprocessor(GenericPreprocessor):
-    def __init__(self, data):
+    def __init__(self, data, max_features=20_000, min_df=1):
         GenericPreprocessor.__init__(self)
         self.data = data
+        self._vectorizer = CountVectorizer(
+            max_features=max_features,
+            min_df=min_df,
+            token_pattern=r"(?u)\b[a-zA-Z]{2,}\b",
+            lowercase=True,
+            strip_accents="unicode",
+        )
+        self._fitted = False
 
-    def process_data(self):
+    def _clean_text(self, texts):
         processed = []
-
-        for text in self.data:
+        for text in texts:
             text = str(text).lower()
 
             #removing punctuation
@@ -43,8 +56,24 @@ class SimplePreprocessor(GenericPreprocessor):
             tokens = [word for word in tokens if word.isalpha()]
 
             processed.append(" ".join(tokens))
+        return processed
 
-        return np.array(processed)
+    def process_data(self):
+        cleaned = self._clean_text(self.data)
+        matrix = self._vectorizer.fit_transform(cleaned)
+        self._fitted = True
+        return matrix.toarray().astype(np.int32)
+    
+    def transform(self, texts):
+        if not self._fitted:
+            raise RuntimeError("Call process_data() before transform().")
+        cleaned = self._clean_text(texts)
+        return self._vectorizer.transform(cleaned).toarray().astype(np.int32)
+    
+    def get_vocab_size(self):
+        if not self._fitted:
+            raise RuntimeError("Call process_data() before get_vocab_size().")
+        return len(self._vectorizer.vocabulary_)
 
 
 class BOWPreprocessor(GenericPreprocessor):
@@ -75,7 +104,7 @@ class BOWPreprocessor(GenericPreprocessor):
         return self.vectorizer.transform(texts).toarray().astype(np.float32)
 
     """Get the size of the vocabulary learned by the CountVectorizer."""
-    def vocab_size(self):
+    def get_vocab_size(self):
         """
         Number of tokens in the fitted vocabulary.
         Useful for defining input dimensions of downstream models.
@@ -88,17 +117,33 @@ class TFIDFPreprocessor(GenericPreprocessor):
         GenericPreprocessor.__init__(self)
         self.data = data
         self.columns = columns
+        self._transformer = None
 
     def process_data(self):
         # implement TFIDF preprocessor
         # return processed data
-        transformer = ColumnTransformer(
+        self._transformer = ColumnTransformer(
             transformers = [
                 (f"{col}_tfidf", TfidfVectorizer(stop_words='english'), col)
                 for col in self.columns
             ], 
             remainder='passthrough')
-        return transformer.fit_transform(self.data)
+        return self._.fit_transform(self.data)
+    
+    def get_vocab_size(self):
+        if self._transformer is None:
+            raise RuntimeError("Call process_data() before get_vocab_size().")
+        total = 0
+        for _, tfidf, _ in self._transformer.transformers_:
+            if hasattr(tfidf, 'vocabulary_'):
+                total += len(tfidf.vocabulary_)
+        return total
+    
+    def transform(self, data):
+        if self._transformer is None:
+            raise RuntimeError("Call process_data() before transform().")
+        return self._transformer.transform(data)
+
 
 class NGramPreprocessor(GenericPreprocessor):
     def __init__(self, data, n=2, max_features=20_000, min_df=3, max_df=0.95,
@@ -127,7 +172,7 @@ class NGramPreprocessor(GenericPreprocessor):
     def transform(self, texts):
         return self.vectorizer.transform(texts).toarray().astype(np.float32)
  
-    def vocab_size(self):
+    def get_vocab_size(self):
         return len(self.vectorizer.vocabulary_)
  
     def get_vocab(self):
