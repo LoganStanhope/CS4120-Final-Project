@@ -65,8 +65,10 @@ print(f"TF-IDF + NaiveBayes accuracy: {nb_accuracy:.8f}")
 bow_preprocessor = BOWPreprocessor(data=X_train_text)
 X_train_bow = bow_preprocessor.process_data()
 X_test_bow = bow_preprocessor.transform(X_test_text)
+X_train_bow = X_train_bow.toarray().astype(np.float32)
+X_test_bow = X_test_bow.toarray().astype(np.float32)
 
-input_dim = bow_preprocessor.vocab_size()   # vocab size from fitted BOW
+input_dim = bow_preprocessor.get_vocab_size()   # vocab size from fitted BOW
 output_dim = 2                              # binary classification: fake vs true
 
 mlp_clf = MLPClf(
@@ -121,8 +123,8 @@ print(classification_report(y_test, nn_preds, target_names=["real", "fake"])) # 
 # ============================================================
 #preprocess text
 simple_pre = SimplePreprocessor(data=X_train_text)
-X_train_simple = simple_pre.process_data()
-X_test_simple = SimplePreprocessor(data=X_test_text).process_data()
+X_train_simple = simple_pre._clean_text(X_train_text.tolist())
+X_test_simple  = simple_pre._clean_text(X_test_text.tolist())
 #converting to numeric features 
 #use TF-IDF as a vectorizer only
 vectorizer = TfidfVectorizer()
