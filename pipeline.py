@@ -61,7 +61,8 @@ def run_pipeline(X, y, preprocessor_cls, pp_kwargs, pp_name, model_cls, model_kw
     if model_name == 'mlp':
         model = model_cls(input_dim=vocab_size, **model_kwargs)
     elif model_name == 'rnn':
-        model = model_cls(vocab_size=vocab_size, **model_kwargs)
+        # FIX: The NGramPreprocessor.get_vocab() adds 2 extra tokens (<PAD>=0 and <UNK>=1), shifting all indices up by 2
+        model = model_cls(vocab_size=vocab_size + 2, **model_kwargs)
     else:
         model = model_cls(**model_kwargs)
 
