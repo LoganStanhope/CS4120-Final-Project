@@ -142,8 +142,6 @@ class MLP(nn.Module):
     def __init__(self, input_dim, hidden_dims, output_dim, dropout=0.3):
         super(MLP, self).__init__()
 
-        # Build layers dynamically from hidden_dims list
-        # e.g. hidden_dims=[256, 128] creates two hidden layers
         layers = []
         prev_dim = input_dim
         for hidden_dim in hidden_dims:
@@ -152,7 +150,6 @@ class MLP(nn.Module):
             layers.append(nn.Dropout(dropout))
             prev_dim = hidden_dim
 
-        # Final classification layer — no activation, handled by loss function
         layers.append(nn.Linear(prev_dim, output_dim))
         self.network = nn.Sequential(*layers)
 
@@ -169,7 +166,6 @@ class MLPClf(GenericClfModel):
 
         self.model = MLP(input_dim, hidden_dims, output_dim, dropout).to(self.device)
 
-        # CrossEntropyLoss expects raw logits (no softmax in forward)
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
 
@@ -181,7 +177,7 @@ class MLPClf(GenericClfModel):
             X_train: np.ndarray of shape (n_samples, input_dim) — e.g. BOW or TFIDF matrix.
             y_train: np.ndarray of shape (n_samples,) — integer class labels.
         """
-        # Convert numpy arrays to tensors and wrap in a DataLoader for batching
+        
         X_tensor = torch.tensor(X_train, dtype=torch.float32)
         y_tensor = torch.tensor(y_train, dtype=torch.long)
         loader = DataLoader(TensorDataset(X_tensor, y_tensor),

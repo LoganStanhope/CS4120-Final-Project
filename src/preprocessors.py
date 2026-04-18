@@ -49,18 +49,15 @@ class SimplePreprocessor(GenericPreprocessor):
 
     def process_data(self):
         cleaned = self._clean_text(self.data)
-        # FIX: return sparse matrix — avoids materialising a huge dense array.
-        # MLP/LogReg/NaiveBayes all accept sparse input natively.
-        # Only call .toarray() inside the RNN path (see pipeline.py).
         matrix = self._vectorizer.fit_transform(cleaned)
         self._fitted = True
-        return matrix  # sparse
+        return matrix  
 
     def transform(self, texts):
         if not self._fitted:
             raise RuntimeError("Call process_data() before transform().")
         cleaned = self._clean_text(texts)
-        return self._vectorizer.transform(cleaned)  # sparse
+        return self._vectorizer.transform(cleaned)  
 
     def get_vocab_size(self):
         if not self._fitted:
@@ -84,11 +81,10 @@ class BOWPreprocessor(GenericPreprocessor):
         )
 
     def process_data(self):
-        # FIX: return sparse — sklearn models handle it fine, saves huge RAM/time.
-        return self.vectorizer.fit_transform(self.data)  # sparse
+        return self.vectorizer.fit_transform(self.data)
 
     def transform(self, texts):
-        return self.vectorizer.transform(texts)  # sparse
+        return self.vectorizer.transform(texts)
 
     def get_vocab_size(self):
         return len(self.vectorizer.vocabulary_)
@@ -107,11 +103,9 @@ class TFIDFPreprocessor(GenericPreprocessor):
                 (f"{col}_tfidf", TfidfVectorizer(stop_words='english'), col)
                 for col in self.columns
             ],
-            remainder='drop',  # drop non-text columns (e.g. leftover after title+text)
+            remainder='drop',  
         )
-        # FIX: was `self._` (typo) — corrected to `self._transformer`
-        # Returns sparse matrix; no .toarray() needed.
-        return self._transformer.fit_transform(self.data)  # sparse
+        return self._transformer.fit_transform(self.data) 
 
     def get_vocab_size(self):
         if self._transformer is None:
@@ -125,8 +119,7 @@ class TFIDFPreprocessor(GenericPreprocessor):
     def transform(self, data):
         if self._transformer is None:
             raise RuntimeError("Call process_data() before transform().")
-        return self._transformer.transform(data)  # sparse
-
+        return self._transformer.transform(data)  
 
 class NGramPreprocessor(GenericPreprocessor):
     def __init__(self, data, n=2, max_features=20_000, min_df=3, max_df=0.95,
@@ -148,11 +141,10 @@ class NGramPreprocessor(GenericPreprocessor):
         )
 
     def process_data(self):
-        # FIX: return sparse
-        return self.vectorizer.fit_transform(self.data)  # sparse
+        return self.vectorizer.fit_transform(self.data) 
 
     def transform(self, texts):
-        return self.vectorizer.transform(texts)  # sparse
+        return self.vectorizer.transform(texts) 
 
     def get_vocab_size(self):
         return len(self.vectorizer.vocabulary_)
