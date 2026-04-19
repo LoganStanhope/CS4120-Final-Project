@@ -1,13 +1,13 @@
-**CS4120 Final Project - Fake News Detection Pipeline**
+# CS4120 Final Project - Fake News Detection Pipeline
 
 A modular NLP pipeline for binary fake news classification. The system benchmarks multiple preprocessor and model combinations against a labeled dataset of real and fake news articles.
 Labels: 0 = real news, 1 = fake news
 
-**Overview** 
+## Overview
 
 The pipeline evaluates all valid combinations of 4 preprocessors and 4 model. Preprocessors are always fit exclusively on training data to prevent data leakage.
 
-**Preprocessors**
+## Preprocessors
 
 Key → Class → Output → Description 
 
@@ -19,7 +19,7 @@ tfidf → TFIDFPreprocessor → Sparse matrix → Per-column TF-IDF via ColumnTr
 
 ngram → NGramPreprocessor → Dense float32 array or integer sequences → TF-IDF with unigrams+bigrams and also exposes to_sequences() for the RNN
 
-**Models**
+## Models
 
 Key → Class → Backend → Notes 
 
@@ -31,18 +31,17 @@ mlp → MLPClf → PyTorch → Configurable feedforward network
 
 rnn → NeuralNetworkClf → PyTorch → Bidirectional RNN with learned embeddings
 
-**Requirements**
+## Requirements
 
 Python 3.8+ recommended. Install dependencies:
 
-	pip install numpy scipy scikit-learn torch pandas nltk
+	pip install -r requirements.txt
 
-**Running the Sample Pipeline**
+## Running the experiments
 
-A self-contained example script is available in test/sample_pipeline.py. It demonstrates each of the four main preprocessor and model combinations individually with detailed comments:
+To load the dataset and run the experiments described in the report, navigate to the project root directory and run 
 
-	python test/sample_pipeline.py
+	python pipeline.py
 
-Has to be run from the project root so that data/True.csv and data/Fake.csv resolve correctly.
 
 
